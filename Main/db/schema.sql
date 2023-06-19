@@ -9,42 +9,27 @@ CREATE TABLE departments (
   department_name VARCHAR(100) NOT NULL
 );
 
-  /* course_description TEXT NOT NULL,
-  active BOOLEAN NOT NULL,
-  date_added DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  instructor_id INT,
-  FOREIGN KEY (instructor_id)
-  REFERENCES instructors(id)
-  ON DELETE SET NULL,
-  PRIMARY KEY(id) */
 
-
--- Table for Company titles
-CREATE TABLE company_titles (
-  id INT AUTO_INCREMENT NOT NULL,
-  title_id INT,
-  titles VARCHAR(100) NOT NULL,
-  /* course_description TEXT NOT NULL,
-  active BOOLEAN NOT NULL,
-  date_added DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  instructor_id INT,*/
-  FOREIGN KEY (title_id)
-  /* REFERENCES instructors(id) */
-  ON DELETE SET NULL,
-  PRIMARY KEY(id) 
+-- Table for Company role
+CREATE TABLE role (
+id INT AUTO_INCREMENT PRIMARY KEY,
+   title VARCHAR(30) NOT NULL,
+   salary DECIMAL,
+   department_id INT,
+   FOREIGN KEY (department_id) REFERENCES departments (id) ON DELETE CASCADE
 );
 
--- Table of employees
-CREATE TABLE employees (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-    firstName VARCHAR(30) NOT NULL,
-    lastName VARCHAR(30) NOT NULL,
-    title VARCHAR(50) NOT NULL,
-    department VARCHAR(50) NOT NULL,
-    salary DECIMAL(10,2) NOT NULL,
-    manager VARCHAR(30) NOT NULL
-  PRIMARY KEY(id)
+-- Table of employee
+CREATE TABLE employee (
+    employee_id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(30),
+    last_name VARCHAR(30),
+    role_id INT,
+    manager_id INT NULL,
+    CONSTRAINT fk_role FOREIGN KEY (role_id) REFERENCES role(role_id) ON DELETE CASCADE,
+    CONSTRAINT fk_manager FOREIGN KEY (manager_id) REFERENCES employee(employee_id) ON DELETE SET NULL
 );
+
 
 
 
