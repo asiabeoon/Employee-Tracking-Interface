@@ -98,21 +98,33 @@ const userPrompts = () => {
 userPrompts()
 
 
-//   Functions to view departments
+//** / Functions to view departments --This works
   function viewAllDepartments(){
     db.query('SELECT * FROM departments', function (err, results) {
         console.table(results);
         userPrompts()
          });
   }
-
-  function viewAllRoles(){
-    db.query('SELECT * FROM role', function (err, results) {
-        console.table(results);
-        userPrompts()
-         });
-  }
-
+  const viewAllRoles = () => {
+    const sql = `SELECT role.id, role.title, departments.department_name, role.salary 
+                 FROM role 
+                 JOIN departments ON role.department_id = departments.id`;
+  
+    db.query(sql, (err, result) => {
+      if (err) {
+        console.log(err);
+      } else {
+        const data = [["ID", "Title", "Department", "Salary"]];
+        result.forEach((role) => {
+          data.push([role.id, role.title, role.department_name, role.salary]);
+        });
+        const output = table(data);
+        console.log(output);
+        userPrompts();
+      }
+    });
+  };
+  
   function viewAllEmployees(){
     db.query('SELECT * FROM employee', function (err, results) {
         console.table(results);
@@ -120,55 +132,98 @@ userPrompts()
          });
   }
 
-
-  //  Functions to Update employee Data --This works---
-const updateEmployeeRole = () => {
-    inquirer.prompt([
-      {
-        name: 'employeeName',
-        type: 'input',
-        message: 'Enter the name of the employee whose role you want to update:',
-      },
-      {
-        name: 'newRole',
-        type: 'input',
-        message: 'Enter the name of the new role:',
-      },
-    ])
-    .then((answers) => {
-      const { employeeName, newRole } = answers;
-      const sql = `
-        SELECT id
-        FROM role
-        WHERE title = ?;
-      `;
-// Following Code created with the assistance of CHAT GPT by 
-      connection.query(sql, newRole, (error, results) => {
-        if (error) throw error;
-        const roleId = results[0].id;
-        const updateSql = `
-          UPDATE employee
-          SET role_id = ?
-          WHERE CONCAT(first_name, ' ', last_name) = ?;
-        `;
-        connection.query(updateSql, [roleId, employeeName], (error, results) => {
-          if (error) throw error;
-          console.log(`${results.affectedRows} employee updated`);
+//**/ To add a new department
+ const addDepartment = () => {
+    inquirer
+      .prompt({
+        name: "departmentName",
+        type: "input",
+        message: "What is the name of the department you want to add?",
+        validate: (departmentName) => {
+          if (departmentName) {
+            return true;
+          } else {
+            console.log("Please enter a department name!");
+            return false;
+          }
+        },
+      })
+      .then((answer) => {
+        const query = `INSERT INTO departments (department_name) VALUES ("${answer.departmentName}")`;
+        db.query(query, (err, res) => {
+          if (err) {
+            console.log(err);
+          } else {
+            console.log(`${answer.departmentName} has been added to departments.`);
+          }
           userPrompts();
         });
       });
+  };
+  
+
+
+  // Womp womp doesn't work Functions to Update employee Role 
+  const updateEmployeeRole = () => {
+    // Step 1: Query the database
+    const sql = `SELECT employee.employee_id, employee.first_name, employee.last_name, role.title AS current_role, role.role_id FROM employee
+                LEFT JOIN role ON employee.role_id = role.role_id`;
+    db.query(sql, (err, rows) => {
+      if (err) throw err;
+  
+      const employees = rows.map(({ employee_id, first_name, last_name, current_role, role_id }) => ({
+        name: `${first_name} ${last_name} (Current Role: ${current_role})`,
+        value: { employee_id, role_id }
+      }));
+  
+      const roles = [...new Set(rows.map(({ title, role_id }) => ({ name: title, value: role_id })))];
+  
+      // Step 2: Prompt the user
+      const questions = [
+        {
+          name: 'employee',
+          type: 'list',
+          message:  'Which employee\'s role would you like to update?',
+          choices: employees
+        },
+        {
+          name: 'role',
+          type: 'list',
+          message: 'Which role do you want to assign to the selected employee?',
+          choices: roles
+        }
+      ];
+  
+      inquirer.prompt(questions)
+        .then(({ employee, role }) => {
+          // Step 4: Update the employee's role
+          const { employee_id } = employee;
+          const { value: role_id } = role;
+          const sql = `UPDATE employee SET role_id = ? WHERE employee_id = ?`;
+          db.query(sql, [role_id, employee_id], (err, result) => {
+            if (err) throw err;
+  
+            // Step 5: Display a message confirming the update
+            console.log(`Successfully updated employee role!`);
+            userPrompts();
+          });
+        });
     });
   };
+  
 
- // Function to add a role
+ // Womp womp this doesn't work Function to add a role--
 const addRole = () => {
     // Query the departments table for department names to use in role creation prompt
     const query = `SELECT department_name FROM departments`;
     db.query(query, (err, results) => {
       if (err) throw err;
-      // Transform the results into an array of department names for use in the Inquirer prompt
-      const departmentChoices = results.map(({  department_name }) => ({
-        name: department_name
+      
+      // ***Transform the results into an array of department names for use in the Inquirer prompt
+      const departmentChoices = results.map(({  name: {title}, department_id }) => ({
+        name: department_name,
+        department_id
+
       }));
       // Inquirer prompts for role information
       inquirer.prompt([
@@ -183,8 +238,9 @@ const addRole = () => {
           message: 'Enter the salary for this role:'
         },
         {
+            // ****
           name: 'department',
-          type: 'list',
+          type: 'input',
           message: 'Choose the department for this role:',
           choices: departmentChoices
         }
@@ -204,7 +260,7 @@ const addRole = () => {
     });
   };
        
-// Function to Add employee
+// * Function to Add employee ---
 const addEmployee = () => {
     // Get role information to generate choices for inquirer prompt
     let rolesList = [];
@@ -263,7 +319,8 @@ const addEmployee = () => {
             choices: managersList
           },
         ]).then((answers) => {
-          // Add new employee to database
+    
+    // Add new employee to database
           db.query(`INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`,
             [answers.firstName, answers.lastName, answers.role, answers.manager],
             (err, rows) => {
@@ -278,6 +335,5 @@ const addEmployee = () => {
       });
     });
   };
-
 
 
